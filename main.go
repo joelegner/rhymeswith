@@ -9,6 +9,7 @@ import (
 	"io"
 	"os"
 	"sort"
+	"strconv"
 	"strings"
 )
 
@@ -56,10 +57,7 @@ func main() {
 	} else {
 		sort.Strings(rhymes)
 		fmt.Printf("Rhymes with '%s' (%d):\n", flag.Arg(0), len(rhymes))
-		for _, r := range rhymes {
-			fmt.Printf("%v ", r)
-		}
-		fmt.Println()
+		printWrapped(rhymes, terminalWidth())
 	}
 }
 
@@ -139,4 +137,38 @@ func findRhymes(targetWord string, entries []Entry) []string {
 		rhymes = append(rhymes, w)
 	}
 	return rhymes
+}
+
+// terminalWidth returns the current terminal width, falling back to 80
+// columns if it can't be determined (e.g. output is piped/redirected).
+func terminalWidth() int {
+	if cols := os.Getenv("COLUMNS"); cols != "" {
+		if n, err := strconv.Atoi(cols); err == nil && n > 0 {
+			return n
+		}
+	}
+	return 80
+}
+
+// printWrapped prints words space-separated, wrapping onto new lines so
+// that no line exceeds width, similar to the fmt(1) command.
+func printWrapped(words []string, width int) {
+	lineLen := 0
+	for i, w := range words {
+		wLen := len(w)
+		if lineLen == 0 {
+			fmt.Print(w)
+			lineLen = wLen
+		} else if lineLen+1+wLen > width {
+			fmt.Println()
+			fmt.Print(w)
+			lineLen = wLen
+		} else {
+			fmt.Print(" " + w)
+			lineLen += 1 + wLen
+		}
+		if i == len(words)-1 {
+			fmt.Println()
+		}
+	}
 }
