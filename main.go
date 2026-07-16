@@ -57,8 +57,9 @@ func main() {
 		sort.Strings(rhymes)
 		fmt.Printf("Rhymes with '%s' (%d):\n", flag.Arg(0), len(rhymes))
 		for _, r := range rhymes {
-			fmt.Println(r)
+			fmt.Printf("%v ", r)
 		}
+		fmt.Println()
 	}
 }
 
