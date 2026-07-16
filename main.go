@@ -1,0 +1,141 @@
+package main
+
+import (
+	"bufio"
+	"bytes"
+	"embed"
+	"flag"
+	"fmt"
+	"io"
+	"os"
+	"sort"
+	"strings"
+)
+
+//go:embed cmudict.txt
+var embeddedDict embed.FS
+
+type Entry struct {
+	Word   string
+	Phones []string
+}
+
+func main() {
+	dictPath := flag.String("dict", "cmudict.txt", "Path to cmudict.txt")
+	flag.Parse()
+
+	if flag.NArg() != 1 {
+		fmt.Println("Usage: go run main.go <word>")
+		return
+	}
+
+	word := strings.ToUpper(flag.Arg(0))
+	fmt.Printf("Looking for rhymes for: %s\n", word)
+
+	entries, err := loadDict(*dictPath)
+	if err != nil {
+		fmt.Printf("Load error: %v\n", err)
+		return
+	}
+
+	fmt.Printf("Loaded %d entries from dictionary\n", len(entries))
+
+	// Debug: check if BOY exists
+	foundBoy := false
+	for _, e := range entries {
+		if e.Word == "BOY" {
+			foundBoy = true
+			break
+		}
+	}
+	fmt.Printf("BOY found in dict: %v\n", foundBoy)
+
+	rhymes := findRhymes(word, entries)
+	if len(rhymes) == 0 {
+		fmt.Printf("No rhymes found for '%s' (or word not in dict).\n", flag.Arg(0))
+	} else {
+		sort.Strings(rhymes)
+		fmt.Printf("Rhymes with '%s' (%d):\n", flag.Arg(0), len(rhymes))
+		for _, r := range rhymes {
+			fmt.Println(r)
+		}
+	}
+}
+
+func loadDict(path string) ([]Entry, error) {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return nil, err
+	}
+	return parseDict(bytes.NewReader(data))
+}
+
+func parseDict(r io.Reader) ([]Entry, error) {
+	var entries []Entry
+	scanner := bufio.NewScanner(r)
+	for scanner.Scan() {
+		line := strings.TrimSpace(scanner.Text())
+		if line == "" || strings.HasPrefix(line, "#") {
+			continue
+		}
+		fields := strings.Fields(line)
+		if len(fields) < 2 {
+			continue
+		}
+
+		word := strings.ToUpper(fields[0])  // Force upper
+		if idx := strings.Index(word, "("); idx != -1 {
+			word = word[:idx]
+		}
+
+		phones := make([]string, len(fields)-1)
+		copy(phones, fields[1:])
+
+		entries = append(entries, Entry{Word: word, Phones: phones})
+	}
+	return entries, scanner.Err()
+}
+
+func getRhymingTail(phones []string) string {
+	for i := len(phones) - 1; i >= 0; i-- {
+		p := phones[i]
+		if len(p) > 0 {
+			lastChar := p[len(p)-1]
+			if lastChar == '1' || lastChar == '2' {
+				return strings.Join(phones[i:], " ")
+			}
+		}
+	}
+	return strings.Join(phones, " ")
+}
+
+func findRhymes(targetWord string, entries []Entry) []string {
+	targetTails := make(map[string]struct{})
+	for _, e := range entries {
+		if e.Word == targetWord {
+			tail := getRhymingTail(e.Phones)
+			targetTails[tail] = struct{}{}
+		}
+	}
+
+	if len(targetTails) == 0 {
+		return nil
+	}
+
+	rhymeSet := make(map[string]struct{})
+	for _, e := range entries {
+		if e.Word == targetWord {
+			continue
+		}
+		tail := getRhymingTail(e.Phones)
+		if _, ok := targetTails[tail]; ok {
+			rhymeSet[strings.ToLower(e.Word)] = struct{}{}
+		}
+	}
+
+	rhymes := make([]string, 0, len(rhymeSet))
+	for w := range rhymeSet {
+		rhymes = append(rhymes, w)
+	}
+	return rhymes
+}
