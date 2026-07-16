@@ -12,8 +12,10 @@ A fast, standalone command-line tool to find perfect rhymes using the CMU Pronou
 ## Quick Start
 
 ```bash
-make          # downloads dict + builds
+make
 ./rhymeswith boy
+sudo make install
+rhymeswith boy
 ```
 
 ## Usage Example
