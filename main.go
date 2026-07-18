@@ -31,7 +31,6 @@ func main() {
 	}
 
 	word := strings.ToUpper(flag.Arg(0))
-	fmt.Printf("Looking for rhymes for: %s\n", word)
 
 	entries, err := loadDict(*dictPath)
 	if err != nil {
@@ -39,24 +38,11 @@ func main() {
 		return
 	}
 
-	fmt.Printf("Loaded %d entries from dictionary\n", len(entries))
-
-	// Debug: check if BOY exists
-	foundBoy := false
-	for _, e := range entries {
-		if e.Word == "BOY" {
-			foundBoy = true
-			break
-		}
-	}
-	fmt.Printf("BOY found in dict: %v\n", foundBoy)
-
 	rhymes := findRhymes(word, entries)
 	if len(rhymes) == 0 {
 		fmt.Printf("No rhymes found for '%s' (or word not in dict).\n", flag.Arg(0))
 	} else {
 		sort.Strings(rhymes)
-		fmt.Printf("Rhymes with '%s' (%d):\n", flag.Arg(0), len(rhymes))
 		printWrapped(rhymes, terminalWidth())
 	}
 }
